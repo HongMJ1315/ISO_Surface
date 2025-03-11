@@ -5,7 +5,6 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include <opencv4/opencv2/opencv.hpp>
 #include <iomanip>
 #include <fstream>
 
@@ -92,24 +91,26 @@ Iso_Surface iso_surface1, iso_surface2;
 GLuint VAO1, VAO2;
 GLsizei vertCount1, vertCount2;
 
+std::vector<Surface> surfaces;
+
 void init_data(){
     // 讀取資料並初始化兩個等值面
     read("Scalar/testing_engine.raw", "Scalar/testing_engine.inf", data);
 
     // iso_surface1: isovalue = 128, 紅色
-    iso_surface1 = Iso_Surface(data, 256, 256, 256, glm::vec3(1.0f, 0.0f, 0.0f), 128.0f);
-    iso_surface1.generate_cube();  // 假設你使用 Marching Cubes (generate_cube)
-
-    // iso_surface2: isovalue = 64, 綠色
-    iso_surface2 = Iso_Surface(data, 256, 256, 256, glm::vec3(0.0f, 1.0f, 0.0f), 32.0f);
-    iso_surface2.generate_cube();
+    iso_surface1 = Iso_Surface(data, 256, 256, 256, glm::vec3(1.0f, 0.0f, 0.0f));
+    iso_surface1.generate_cube(200.f);  // 假設你使用 Marching Cubes (generate_cube)
+    surfaces.push_back({iso_surface1.getVertices(), iso_surface1.getNormals()});
+    
+    iso_surface1.generate_cube(10.f);
+    surfaces.push_back({iso_surface1.getVertices(), iso_surface1.getNormals()});
 }
 
 // 建立一個函式，把某個 iso_surface 的頂點/法線存進 GPU (VAO, VBO)
-void setupSurfaceVAO(Iso_Surface& iso_surface, GLuint& outVAO, GLsizei& outVertCount) {
+void setupSurfaceVAO(Surface surface, GLuint& outVAO, GLsizei& outVertCount) {
     // 取得該 surface 的頂點與法線
-    std::vector<glm::vec3> vertices = iso_surface.getVertices();
-    std::vector<glm::vec3> normals  = iso_surface.getNormals();
+    std::vector<glm::vec3> vertices = surface.vertices;
+    std::vector<glm::vec3> normals  = surface.normals;
     outVertCount = static_cast<GLsizei>(vertices.size());
 
     // 產生 VAO, VBO
@@ -186,8 +187,8 @@ int main(int argc, char **argv){
     init_data();
 
     // 分別設定兩個 iso_surface 的 VAO
-    setupSurfaceVAO(iso_surface1, VAO1, vertCount1);
-    setupSurfaceVAO(iso_surface2, VAO2, vertCount2);
+    setupSurfaceVAO(surfaces[0], VAO1, vertCount1);
+    setupSurfaceVAO(surfaces[1], VAO2, vertCount2);
 
     // 建立 shader
     int shaderProgram = setGLSLshaders("shader/phong.vert", "shader/phong.frag");

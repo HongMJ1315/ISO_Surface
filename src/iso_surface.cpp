@@ -11,7 +11,7 @@ Iso_Surface::Iso_Surface(){
     this->isovalue = 0.0f;
 }
 
-Iso_Surface::Iso_Surface(std::vector<unsigned char> data, int length, int width, int height, glm::vec3 color, float isovalue){
+Iso_Surface::Iso_Surface(std::vector<unsigned char> data, int length, int width, int height, glm::vec3 color){
     for(int i = 0; i < length; i++){
         std::vector<std::vector<float> > temp;
         for(int j = 0; j < width; j++){
@@ -27,7 +27,7 @@ Iso_Surface::Iso_Surface(std::vector<unsigned char> data, int length, int width,
     this->width = width;
     this->height = height;
     this->color = color;
-    this->isovalue = isovalue;
+    this->isovalue = 0.0f;
 }
 
 std::vector<glm::vec3> Iso_Surface::get_vert_tetr(VertData v0, VertData v1, VertData v2, VertData v3){
@@ -314,7 +314,8 @@ std::vector<glm::vec3> Iso_Surface::get_vert_cube(VertData v0, VertData v1, Vert
     return verts;
 }
 
-void Iso_Surface::generate_tetr(){
+void Iso_Surface::generate_tetr(float isovalue){
+    this->isovalue = isovalue;
     for(int i = 0; i < length - 1; i++){
         for(int j = 0; j < width - 1; j++){
             for(int k = 0; k < height - 1; k++){
@@ -357,7 +358,8 @@ void Iso_Surface::generate_tetr(){
     calculateNormals();
 }
 
-void Iso_Surface::generate_cube(){
+void Iso_Surface::generate_cube(float iso_value){
+    this->isovalue = iso_value;
     for(int i = 0; i < length - 1; i++){
         for(int j = 0; j < width - 1; j++){
             for(int k = 0; k < height - 1; k++){
@@ -412,4 +414,3 @@ std::vector<glm::vec3> Iso_Surface::getVertices(){
 std::vector<glm::vec3> Iso_Surface::getNormals(){
     return normals;
 }
-

@@ -5,7 +5,6 @@
 #include <fstream>
 #include <string>
 #include <vector>
-#include <libraw/libraw.h>
 
 int read(std::string filename, std::string fileinfo, std::vector<unsigned char> &data);
 
