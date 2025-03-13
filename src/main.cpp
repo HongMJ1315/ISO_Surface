@@ -157,8 +157,8 @@ int main(int argc, char **argv){
     glfwSetWindowSizeCallback(window, reshape);
 
     // 設定滑鼠回呼，並隱藏游標（捕捉滑鼠）
-    glfwSetCursorPosCallback(window, mouse_callback);
-    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    // glfwSetCursorPosCallback(window, mouse_callback);
+    // glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
     if(!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)){
         std::cout << "Failed to initialize GLAD" << std::endl;
@@ -201,6 +201,7 @@ int main(int argc, char **argv){
     glm::vec3 lightColor(1.0f, 1.0f, 1.0f);
 
     // 渲染主迴圈
+    float ISO1 = 200.f, ISO2 = 10.f;
     while(!glfwWindowShouldClose(window)){
         float currentFrame = glfwGetTime();
         deltaTime = currentFrame - lastFrame;
@@ -218,6 +219,18 @@ int main(int argc, char **argv){
         {
             ImGui::Begin("Input Window");
             ImGui::Text("Camera Position: (%.2f, %.2f, %.2f)", cameraPos.x, cameraPos.y, cameraPos.z);
+            // slide bar
+            ImGui::SliderFloat("ISO Value 1", &ISO1, 0.0f, 255.0f);
+            ImGui::SliderFloat("ISO Value 2", &ISO2, 0.0f, 255.0f);
+            // Button
+            if(ImGui::Button("Render")){
+                iso_surface1.generate_cube(ISO1);
+                iso_surface2.generate_cube(ISO2);
+                surfaces[0] = { iso_surface1.getVertices(), iso_surface1.getNormals() };
+                surfaces[1] = { iso_surface2.getVertices(), iso_surface2.getNormals() };
+                setupSurfaceVAO(surfaces[0], VAO1, vertCount1);
+                setupSurfaceVAO(surfaces[1], VAO2, vertCount2);
+            }
             ImGui::End();
         }
 

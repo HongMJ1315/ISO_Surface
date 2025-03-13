@@ -359,6 +359,7 @@ void Iso_Surface::generate_tetr(float isovalue){
 }
 
 void Iso_Surface::generate_cube(float iso_value){
+    std::cout << "generate_cube" << std::endl;
     this->isovalue = iso_value;
     for(int i = 0; i < length - 1; i++){
         for(int j = 0; j < width - 1; j++){
@@ -381,6 +382,7 @@ void Iso_Surface::generate_cube(float iso_value){
         }
     }
     calculateNormals();
+    std::cout << "generate_cube end" << std::endl;
 }
 
 void Iso_Surface::calculateNormals() {
