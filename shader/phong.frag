@@ -14,7 +14,7 @@ uniform vec3 minDrawPos;
 
 void main() {
 
-    if(!(minDrawPos.x <= FragPos.x  &&
+    if(!(!(minDrawPos.x <= FragPos.x ) &&
          minDrawPos.y <= FragPos.y  &&
          minDrawPos.z <= FragPos.z )) {
         discard;
@@ -37,5 +37,5 @@ void main() {
     vec3 specular = specularStrength * spec * lightColor;
     
     vec3 result = (ambient + diffuse + specular) * objectColor;
-    FragColor = vec4(result, 1.0);
+    FragColor = vec4(result, 0.3);
 }

@@ -17,7 +17,6 @@ struct VertData{
     std::vector<std::vector<std::vector<float> > > data;
     std::vector<glm::vec3> vertices;
     std::vector<glm::vec3> normals;
-    glm::vec3 color;
     float isovalue;
     int length, width, height;
     std::vector<glm::vec3> get_vert_tetr(VertData v0, VertData v1, VertData v2, VertData v3);
@@ -26,7 +25,7 @@ struct VertData{
     void calculateNormals();
 public:
     Iso_Surface();
-    Iso_Surface(std::vector<unsigned char> data, int length, int width, int height, glm::vec3 color);
+    Iso_Surface(std::vector<unsigned char> data, int length, int width, int height);
     void generate_tetr(float isovalue);
     void generate_cube(float isovalue);
     std::vector<glm::vec3> getVertices();
@@ -39,6 +38,7 @@ public:
 struct Surface{
     std::vector<glm::vec3> vertices;
     std::vector<glm::vec3> normals;
+    glm::vec3 color;
 };
 
 #endif

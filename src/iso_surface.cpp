@@ -7,11 +7,10 @@ Iso_Surface::Iso_Surface(){
     this->length = 0;
     this->width = 0;
     this->height = 0;
-    this->color = glm::vec3(0.0f, 0.0f, 0.0f);
     this->isovalue = 0.0f;
 }
 
-Iso_Surface::Iso_Surface(std::vector<unsigned char> data, int length, int width, int height, glm::vec3 color){
+Iso_Surface::Iso_Surface(std::vector<unsigned char> data, int length, int width, int height){
     for(int i = 0; i < length; i++){
         std::vector<std::vector<float> > temp;
         for(int j = 0; j < width; j++){
@@ -26,7 +25,6 @@ Iso_Surface::Iso_Surface(std::vector<unsigned char> data, int length, int width,
     this->length = length;
     this->width = width;
     this->height = height;
-    this->color = color;
     this->isovalue = 0.0f;
 }
 

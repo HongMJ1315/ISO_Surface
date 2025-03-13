@@ -25,8 +25,8 @@ int width = 800;
 int height = 600;
 
 // -------------------- Camera 全域變數 --------------------
-glm::vec3 cameraPos   = glm::vec3(0.0f, 0.0f, 0.0f);
-glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
+glm::vec3 cameraPos   = glm::vec3(420.0f, -100.0f, -180.0f);
+glm::vec3 cameraFront = glm::vec3(-0.40f, 0.60f, 0.60f);
 glm::vec3 cameraUp    = glm::vec3(0.0f, 1.0f, 0.0f);
 float yaw   = -90.0f;      // 初始指向 -Z（使用 -90 度）
 float pitch = 0.0f;
@@ -125,12 +125,12 @@ void init_data(){
     read("Scalar/testing_engine.raw", "Scalar/testing_engine.inf", data);
 
     // iso_surface1: isovalue = 128, 紅色
-    iso_surface1 = Iso_Surface(data, MODEL_LEN, MODEL_HEI, MODEL_WID, glm::vec3(1.0f, 0.0f, 0.0f));
+    iso_surface1 = Iso_Surface(data, MODEL_LEN, MODEL_HEI, MODEL_WID);
     iso_surface1.generate_cube(200.f);  // 假設你使用 Marching Cubes (generate_cube)
-    surfaces.push_back({iso_surface1.getVertices(), iso_surface1.getNormals()});
+    surfaces.push_back({iso_surface1.getVertices(), iso_surface1.getNormals(), glm::vec3(155.f / 255.0f, 89.f / 255.0f, 182.f / 255.0f)});
     
     iso_surface1.generate_cube(10.f);
-    surfaces.push_back({iso_surface1.getVertices(), iso_surface1.getNormals()});
+    surfaces.push_back({iso_surface1.getVertices(), iso_surface1.getNormals(), glm::vec3(0.0f, 1.0f, 1.0f)});
 }
 
 // 建立一個函式，把某個 iso_surface 的頂點/法線存進 GPU (VAO, VBO)
@@ -196,6 +196,8 @@ int main(int argc, char **argv){
     }
     glViewport(0, 0, width, height);
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     std::cout << "GLFW version: " << glfwGetVersionString() << std::endl;
     const GLubyte* glslVersion = glGetString(GL_SHADING_LANGUAGE_VERSION);
@@ -254,7 +256,7 @@ int main(int argc, char **argv){
             ImGui::Text("Camera Front Position: (%.2f, %.2f, %.2f)", cameraFront.x, cameraFront.y, cameraFront.z);
             ImGui::SliderFloat("ISO Value 1", &ISO1, 0.0f, 255.0f);
             ImGui::SliderFloat("ISO Value 2", &ISO2, 0.0f, 255.0f);
-            ImGui::SliderFloat("Min Draw Position X", &minDrawPos.x, 0.0f, MODEL_LEN);
+            ImGui::SliderFloat("Min Draw Position X", &minDrawPos.x, MODEL_LEN, 0.0f);
             ImGui::SliderFloat("Min Draw Position Y", &minDrawPos.y, 0.0f, MODEL_HEI);
             ImGui::SliderFloat("Min Draw Position Z", &minDrawPos.z, 0.0f, MODEL_WID);
 
@@ -268,13 +270,13 @@ int main(int argc, char **argv){
                     // 使用 std::async 非同步執行計算
                     surfaceFuture = std::async(std::launch::async, [iso1, iso2]() -> std::pair<Surface, Surface>{
                         // 注意：在背景線程中僅進行資料運算，不能呼叫 OpenGL API
-                        Iso_Surface localSurfaceRed(data, 256, 256, 256, glm::vec3(1.0f, 0.0f, 0.0f));
-                        localSurfaceRed.generate_cube(iso1);
-                        Surface newRed = { localSurfaceRed.getVertices(), localSurfaceRed.getNormals() };
-
-                        Iso_Surface localSurfaceGreen(data, 256, 256, 256, glm::vec3(0.0f, 1.0f, 0.0f));
-                        localSurfaceGreen.generate_cube(iso2);
-                        Surface newGreen = { localSurfaceGreen.getVertices(), localSurfaceGreen.getNormals() };
+                        Iso_Surface tmp1(data, 256, 256, 256);
+                        tmp1.generate_cube(iso1);  // 假設你使用 Marching Cubes (generate_cube)
+                        Surface newRed = {tmp1.getVertices(), tmp1.getNormals(), glm::vec3(84.f / 255.0f, 153.f / 255.0f, 199.f / 255.0f)};
+                        
+                        Iso_Surface tmp2(data, 256, 256, 256);
+                        tmp2.generate_cube(iso2);
+                        Surface newGreen = {tmp2.getVertices(), tmp2.getNormals(), glm::vec3(0.0f, 1.0f, 1.0f)};
 
                         return std::make_pair(newRed, newGreen);
                     });
@@ -321,14 +323,14 @@ int main(int argc, char **argv){
 
 
         // 畫出第一個等值面 (紅色)
-        glm::vec3 color1 = glm::vec3(1.0f, 0.0f, 0.0f);
+        glm::vec3 color1 = surfaces[0].color;
         glUniform3fv(objectColorLoc, 1, glm::value_ptr(color1));
         glBindVertexArray(VAO1);
         glDrawArrays(GL_TRIANGLES, 0, vertCount1);
         glBindVertexArray(0);
 
         // 畫出第二個等值面 (綠色)
-        glm::vec3 color2 = glm::vec3(0.0f, 1.0f, 0.0f);
+        glm::vec3 color2 = surfaces[1].color;
         glUniform3fv(objectColorLoc, 1, glm::value_ptr(color2));
         glBindVertexArray(VAO2);
         glDrawArrays(GL_TRIANGLES, 0, vertCount2);
