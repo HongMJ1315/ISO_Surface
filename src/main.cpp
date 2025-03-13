@@ -18,6 +18,7 @@
 #include "reader.h"
 #include "iso_surface.h"
 #include "MarchingCubesTables.hpp"
+#include <future>
 
 int width = 800;
 int height = 600;
@@ -36,7 +37,10 @@ float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 // --------------------------------------------------------
 
-void processInput(GLFWwindow *window) {
+// 宣告一個 future 用來接收背景線程計算的結果（回傳兩個 surface）
+std::future<std::pair<Surface, Surface>> surfaceFuture;
+
+void processInput(GLFWwindow *window){
     float cameraSpeed = 50.f * deltaTime; 
     if(glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
         cameraPos += cameraSpeed * cameraFront;
@@ -213,61 +217,83 @@ int main(int argc, char **argv){
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+        // ImGui 畫面
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
         {
             ImGui::Begin("Input Window");
             ImGui::Text("Camera Position: (%.2f, %.2f, %.2f)", cameraPos.x, cameraPos.y, cameraPos.z);
-            // slide bar
             ImGui::SliderFloat("ISO Value 1", &ISO1, 0.0f, 255.0f);
             ImGui::SliderFloat("ISO Value 2", &ISO2, 0.0f, 255.0f);
-            // Button
+            // 當按下按鈕時，啟動背景線程計算新的等值面
             if(ImGui::Button("Render")){
-                iso_surface1.generate_cube(ISO1);
-                iso_surface2.generate_cube(ISO2);
-                surfaces[0] = { iso_surface1.getVertices(), iso_surface1.getNormals() };
-                surfaces[1] = { iso_surface2.getVertices(), iso_surface2.getNormals() };
-                setupSurfaceVAO(surfaces[0], VAO1, vertCount1);
-                setupSurfaceVAO(surfaces[1], VAO2, vertCount2);
+                // 如果前一次的計算已完成（或未啟動）則啟動新計算
+                if(!surfaceFuture.valid()){
+                    // 捕捉當前 ISO 值
+                    float iso1 = ISO1;
+                    float iso2 = ISO2;
+                    // 使用 std::async 非同步執行計算
+                    surfaceFuture = std::async(std::launch::async, [iso1, iso2]() -> std::pair<Surface, Surface>{
+                        // 注意：在背景線程中僅進行資料運算，不能呼叫 OpenGL API
+                        Iso_Surface localSurfaceRed(data, 256, 256, 256, glm::vec3(1.0f, 0.0f, 0.0f));
+                        localSurfaceRed.generate_cube(iso1);
+                        Surface newRed = { localSurfaceRed.getVertices(), localSurfaceRed.getNormals() };
+
+                        Iso_Surface localSurfaceGreen(data, 256, 256, 256, glm::vec3(0.0f, 1.0f, 0.0f));
+                        localSurfaceGreen.generate_cube(iso2);
+                        Surface newGreen = { localSurfaceGreen.getVertices(), localSurfaceGreen.getNormals() };
+
+                        return std::make_pair(newRed, newGreen);
+                    });
+                }
             }
             ImGui::End();
         }
 
+        // 如果背景計算完成，更新 surface 與 VAO（必須在主線程中進行 OpenGL 呼叫）
+        if(surfaceFuture.valid() &&
+            surfaceFuture.wait_for(std::chrono::seconds(0)) == std::future_status::ready){
+            auto newSurfaces = surfaceFuture.get();
+            surfaces[0] = newSurfaces.first;
+            surfaces[1] = newSurfaces.second;
+            // 更新 VAO，注意這裡會建立新的 VAO，請依需求管理舊資源
+            setupSurfaceVAO(surfaces[0], VAO1, vertCount1);
+            setupSurfaceVAO(surfaces[1], VAO2, vertCount2);
+        }
+
         glUseProgram(shaderProgram);
 
-        // 計算 view / projection
+        // 計算 view 與 projection 矩陣
         glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
-        glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float)width/height, 0.1f, 2000.0f);
+        glm::mat4 projection = glm::perspective(glm::radians(45.0f), (float) width / height, 0.1f, 2000.0f);
 
-        // 傳入 shader
+        // 傳送矩陣給 shader
         GLint modelLoc = glGetUniformLocation(shaderProgram, "model");
-        GLint viewLoc  = glGetUniformLocation(shaderProgram, "view");
-        GLint projLoc  = glGetUniformLocation(shaderProgram, "projection");
+        GLint viewLoc = glGetUniformLocation(shaderProgram, "view");
+        GLint projLoc = glGetUniformLocation(shaderProgram, "projection");
         glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
         glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
 
         GLint lightPosLoc = glGetUniformLocation(shaderProgram, "lightPos");
-        GLint viewPosLoc  = glGetUniformLocation(shaderProgram, "viewPos");
+        GLint viewPosLoc = glGetUniformLocation(shaderProgram, "viewPos");
         GLint lightColorLoc = glGetUniformLocation(shaderProgram, "lightColor");
         GLint objectColorLoc = glGetUniformLocation(shaderProgram, "objectColor");
         glUniform3fv(lightPosLoc, 1, glm::value_ptr(lightPos));
         glUniform3fv(viewPosLoc, 1, glm::value_ptr(cameraPos));
         glUniform3fv(lightColorLoc, 1, glm::value_ptr(lightColor));
 
-        // ---------- 繪製第一個 iso_surface (紅色) ----------
+        // 畫出第一個等值面 (紅色)
         glm::vec3 color1 = glm::vec3(1.0f, 0.0f, 0.0f);
         glUniform3fv(objectColorLoc, 1, glm::value_ptr(color1));
-
         glBindVertexArray(VAO1);
         glDrawArrays(GL_TRIANGLES, 0, vertCount1);
         glBindVertexArray(0);
 
-        // ---------- 繪製第二個 iso_surface (綠色) ----------
+        // 畫出第二個等值面 (綠色)
         glm::vec3 color2 = glm::vec3(0.0f, 1.0f, 0.0f);
         glUniform3fv(objectColorLoc, 1, glm::value_ptr(color2));
-
         glBindVertexArray(VAO2);
         glDrawArrays(GL_TRIANGLES, 0, vertCount2);
         glBindVertexArray(0);
