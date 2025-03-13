@@ -5,7 +5,7 @@
  * Procedure to set up the vertex and fragment shader.
  * This proce4dure also create a program object containing the shader.
  */
-int setGLSLshaders(char *VertexShaderFileName, char *FragmentShaderFileName);
+int set_shaders(char *VertexShaderFileName, char *FragmentShaderFileName);
 
 
 #endif

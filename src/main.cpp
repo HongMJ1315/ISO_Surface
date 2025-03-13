@@ -10,6 +10,7 @@
 
 #include "glsl.h"
 #include "GLinclude.h"
+#include "matrix.h"
 
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
@@ -24,7 +25,7 @@ int width = 800;
 int height = 600;
 
 // -------------------- Camera 全域變數 --------------------
-glm::vec3 cameraPos   = glm::vec3(256.0f, 256.0f, 800.0f);
+glm::vec3 cameraPos   = glm::vec3(0.0f, 0.0f, 0.0f);
 glm::vec3 cameraFront = glm::vec3(0.0f, 0.0f, -1.0f);
 glm::vec3 cameraUp    = glm::vec3(0.0f, 1.0f, 0.0f);
 float yaw   = -90.0f;      // 初始指向 -Z（使用 -90 度）
@@ -39,8 +40,17 @@ float lastFrame = 0.0f;
 
 // 宣告一個 future 用來接收背景線程計算的結果（回傳兩個 surface）
 std::future<std::pair<Surface, Surface>> surfaceFuture;
+#define MOVE_SPEED 10.f
+#define ROTATE_SPEED 2.0f
 
-void processInput(GLFWwindow *window){
+#define MODEL_LEN 256.0f
+#define MODEL_HEI 256.0f
+#define MODEL_WID 256.0f
+
+
+bool mouse_captured = false;
+
+void process_input(GLFWwindow *window){
     float cameraSpeed = 50.f * deltaTime; 
     if(glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
         cameraPos += cameraSpeed * cameraFront;
@@ -52,7 +62,20 @@ void processInput(GLFWwindow *window){
         cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * cameraSpeed;
 }
 
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods){
+    // 當按下 ESC 時，將滑鼠模式設為正常，游標將會脫離畫面
+    if(glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS){
+        if(mouse_captured)
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        else
+            glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        mouse_captured = !mouse_captured;
+        firstMouse = true;
+    }
+}
 void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
+    if(!mouse_captured)
+        return;
     if(firstMouse) {
         lastX = xpos;
         lastY = ypos;
@@ -102,7 +125,7 @@ void init_data(){
     read("Scalar/testing_engine.raw", "Scalar/testing_engine.inf", data);
 
     // iso_surface1: isovalue = 128, 紅色
-    iso_surface1 = Iso_Surface(data, 256, 256, 256, glm::vec3(1.0f, 0.0f, 0.0f));
+    iso_surface1 = Iso_Surface(data, MODEL_LEN, MODEL_HEI, MODEL_WID, glm::vec3(1.0f, 0.0f, 0.0f));
     iso_surface1.generate_cube(200.f);  // 假設你使用 Marching Cubes (generate_cube)
     surfaces.push_back({iso_surface1.getVertices(), iso_surface1.getNormals()});
     
@@ -111,7 +134,7 @@ void init_data(){
 }
 
 // 建立一個函式，把某個 iso_surface 的頂點/法線存進 GPU (VAO, VBO)
-void setupSurfaceVAO(Surface surface, GLuint& outVAO, GLsizei& outVertCount) {
+void setup_surface_vao(Surface surface, GLuint& outVAO, GLsizei& outVertCount) {
     // 取得該 surface 的頂點與法線
     std::vector<glm::vec3> vertices = surface.vertices;
     std::vector<glm::vec3> normals  = surface.normals;
@@ -160,10 +183,13 @@ int main(int argc, char **argv){
     glfwMakeContextCurrent(window);
     glfwSetWindowSizeCallback(window, reshape);
 
+    
     // 設定滑鼠回呼，並隱藏游標（捕捉滑鼠）
-    // glfwSetCursorPosCallback(window, mouse_callback);
-    // glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-
+    glfwSetCursorPosCallback(window, mouse_callback);
+    glfwSetKeyCallback(window, key_callback);
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    mouse_captured = true;
+    
     if(!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)){
         std::cout << "Failed to initialize GLAD" << std::endl;
         return -1;
@@ -191,11 +217,11 @@ int main(int argc, char **argv){
     init_data();
 
     // 分別設定兩個 iso_surface 的 VAO
-    setupSurfaceVAO(surfaces[0], VAO1, vertCount1);
-    setupSurfaceVAO(surfaces[1], VAO2, vertCount2);
+    setup_surface_vao(surfaces[0], VAO1, vertCount1);
+    setup_surface_vao(surfaces[1], VAO2, vertCount2);
 
     // 建立 shader
-    int shaderProgram = setGLSLshaders("shader/phong.vert", "shader/phong.frag");
+    int shaderProgram = set_shaders("shader/phong.vert", "shader/phong.frag");
 
     // 模型矩陣（如有需要可再調整位置）
     glm::mat4 model = glm::mat4(1.0f);
@@ -204,6 +230,7 @@ int main(int argc, char **argv){
     glm::vec3 lightPos(300.0f, 300.0f, 600.0f);
     glm::vec3 lightColor(1.0f, 1.0f, 1.0f);
 
+    glm::vec3 minDrawPos(-200.0f, -200.0f, -200.0f);
     // 渲染主迴圈
     float ISO1 = 200.f, ISO2 = 10.f;
     while(!glfwWindowShouldClose(window)){
@@ -211,7 +238,7 @@ int main(int argc, char **argv){
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
-        processInput(window);
+        process_input(window);
         glfwPollEvents();
 
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
@@ -224,8 +251,13 @@ int main(int argc, char **argv){
         {
             ImGui::Begin("Input Window");
             ImGui::Text("Camera Position: (%.2f, %.2f, %.2f)", cameraPos.x, cameraPos.y, cameraPos.z);
+            ImGui::Text("Camera Front Position: (%.2f, %.2f, %.2f)", cameraFront.x, cameraFront.y, cameraFront.z);
             ImGui::SliderFloat("ISO Value 1", &ISO1, 0.0f, 255.0f);
             ImGui::SliderFloat("ISO Value 2", &ISO2, 0.0f, 255.0f);
+            ImGui::SliderFloat("Min Draw Position X", &minDrawPos.x, 0.0f, MODEL_LEN);
+            ImGui::SliderFloat("Min Draw Position Y", &minDrawPos.y, 0.0f, MODEL_HEI);
+            ImGui::SliderFloat("Min Draw Position Z", &minDrawPos.z, 0.0f, MODEL_WID);
+
             // 當按下按鈕時，啟動背景線程計算新的等值面
             if(ImGui::Button("Render")){
                 // 如果前一次的計算已完成（或未啟動）則啟動新計算
@@ -258,8 +290,8 @@ int main(int argc, char **argv){
             surfaces[0] = newSurfaces.first;
             surfaces[1] = newSurfaces.second;
             // 更新 VAO，注意這裡會建立新的 VAO，請依需求管理舊資源
-            setupSurfaceVAO(surfaces[0], VAO1, vertCount1);
-            setupSurfaceVAO(surfaces[1], VAO2, vertCount2);
+            setup_surface_vao(surfaces[0], VAO1, vertCount1);
+            setup_surface_vao(surfaces[1], VAO2, vertCount2);
         }
 
         glUseProgram(shaderProgram);
@@ -283,6 +315,10 @@ int main(int argc, char **argv){
         glUniform3fv(lightPosLoc, 1, glm::value_ptr(lightPos));
         glUniform3fv(viewPosLoc, 1, glm::value_ptr(cameraPos));
         glUniform3fv(lightColorLoc, 1, glm::value_ptr(lightColor));
+
+        GLint minDrawPosLoc = glGetUniformLocation(shaderProgram, "minDrawPos");
+        glUniform3fv(minDrawPosLoc, 1, glm::value_ptr(minDrawPos));
+
 
         // 畫出第一個等值面 (紅色)
         glm::vec3 color1 = glm::vec3(1.0f, 0.0f, 0.0f);

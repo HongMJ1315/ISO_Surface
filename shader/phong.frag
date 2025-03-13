@@ -10,7 +10,15 @@ uniform vec3 viewPos;
 uniform vec3 lightColor;
 uniform vec3 objectColor;
 
+uniform vec3 minDrawPos;
+
 void main() {
+
+    if(!(minDrawPos.x <= FragPos.x  &&
+         minDrawPos.y <= FragPos.y  &&
+         minDrawPos.z <= FragPos.z )) {
+        discard;
+    }
     // 環境光
     float ambientStrength = 0.2;
     vec3 ambient = ambientStrength * lightColor;

@@ -77,7 +77,7 @@ void print_prog_info_log(GLenum obj){
  *  3. Compile, attach, and link the shaders.
  * Keep the program object ID in  myProgObjID[0] and return.
  */
-int setGLSLshaders(char *vertexShaderFileName, char *fragmentShaderFileName){
+int set_shaders(char *vertexShaderFileName, char *fragmentShaderFileName){
     GLuint    vertexShader = 0, fragmentShader = 0;
     char *VSsourceCodes, *FSsourceCodes;
 
