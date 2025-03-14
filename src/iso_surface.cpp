@@ -2,6 +2,7 @@
 #include "reader.h"
 #include "MarchingCubesTables.hpp"
 #include "MarchingTetrahedraTables.hpp"
+#include <algorithm>
 
 Iso_Surface::Iso_Surface(){
     this->length = 0;
@@ -11,17 +12,68 @@ Iso_Surface::Iso_Surface(){
 }
 
 Iso_Surface::Iso_Surface(std::vector<unsigned char> data, int length, int width, int height){
+    distribute.resize(256, 0);
+    
+    float max_val = -1.0f;
+
     for(int i = 0; i < length; i++){
         std::vector<std::vector<float> > temp;
         for(int j = 0; j < width; j++){
             std::vector<float> temp2;
             for(int k = 0; k < height; k++){
                 temp2.push_back((float)int(data[i * width * height + j * height + k]));
+                if(int(data[i * width * height + j * height + k]) > 0)
+                    distribute[int(data[i * width * height + j * height + k])]+=1;
             }
             temp.push_back(temp2);
         }
         this->data.push_back(temp);
     }
+    for(auto i: distribute){
+        max_val = std::max(max_val, i);
+    }
+    std::cout << max_val << std::endl;
+    for(auto &i: distribute){
+        std::cout << i << std::endl;
+        i /= max_val;
+    }
+
+    for(int i = 0; i < length - 1; i++){
+        for(int j = 0; j < width - 1; j++){
+            for(int k = 0; k < height - 1; k++){
+                VertData v_data[] = {{i, j, k + 1},
+                {i + 1, j, k + 1},
+                {i + 1, j + 1, k + 1},
+                {i, j + 1, k + 1},
+                {i, j, k},
+                {i + 1, j, k},
+                {i + 1, j + 1, k},
+                {i, j + 1, k}};
+                float min = 256.0f, max = -1.0f;
+                VertData min_loc = {0, 0, 0};
+                VertData max_loc = {0, 0, 0};
+                for(int l = 0; l < 8; l++){
+                    if(this->data[v_data[l].x][v_data[l].y][v_data[l].z] < min){
+                        min = this->data[v_data[l].x][v_data[l].y][v_data[l].z];
+                        min_loc = v_data[l];
+                    }
+                    if(this->data[v_data[l].x][v_data[l].y][v_data[l].z] > max){
+                        max = this->data[v_data[l].x][v_data[l].y][v_data[l].z];
+                        max_loc = v_data[l];
+                    }
+                }
+                minmax.push_back({min, max, min_loc.x, min_loc.y, min_loc.z});
+            }
+        }
+    }
+
+    std::sort(minmax.begin(), minmax.end(), [](Cube_MinMax a, Cube_MinMax b){
+        if(a.min != b.min)
+            return a.min < b.min;
+        else
+            return a.max < b.max;
+    });
+    
     this->length = length;
     this->width = width;
     this->height = height;
@@ -358,7 +410,10 @@ void Iso_Surface::generate_tetr(float isovalue){
 
 void Iso_Surface::generate_cube(float iso_value){
     std::cout << "generate_cube" << std::endl;
+    vertices.clear();
+    normals.clear();
     this->isovalue = iso_value;
+    // /*
     for(int i = 0; i < length - 1; i++){
         for(int j = 0; j < width - 1; j++){
             for(int k = 0; k < height - 1; k++){
@@ -379,6 +434,7 @@ void Iso_Surface::generate_cube(float iso_value){
             }
         }
     }
+    // */
     calculateNormals();
     std::cout << "generate_cube end" << std::endl;
 }
@@ -413,4 +469,8 @@ std::vector<glm::vec3> Iso_Surface::getVertices(){
 
 std::vector<glm::vec3> Iso_Surface::getNormals(){
     return normals;
+}
+
+std::vector<float> Iso_Surface::getDistribute(){
+    return distribute;
 }

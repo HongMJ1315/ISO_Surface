@@ -259,7 +259,10 @@ int main(int argc, char **argv){
             ImGui::SliderFloat("Min Draw Position X", &minDrawPos.x, MODEL_LEN, 0.0f);
             ImGui::SliderFloat("Min Draw Position Y", &minDrawPos.y, 0.0f, MODEL_HEI);
             ImGui::SliderFloat("Min Draw Position Z", &minDrawPos.z, 0.0f, MODEL_WID);
-
+            std::vector<float> d = iso_surface1.getDistribute();
+            ImVec2 graph_size = ImVec2(0, 80);
+            ImGui::PlotHistogram("My Histogram", d.data(), d.size(), 0, nullptr, FLT_MAX, FLT_MAX, graph_size);
+                     
             // 當按下按鈕時，啟動背景線程計算新的等值面
             if(ImGui::Button("Render")){
                 // 如果前一次的計算已完成（或未啟動）則啟動新計算

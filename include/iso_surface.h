@@ -14,9 +14,15 @@ private:
 struct VertData{
     int x, y, z;
 };
+struct Cube_MinMax{
+    float min, max;
+    int x, y, z;
+};
     std::vector<std::vector<std::vector<float> > > data;
     std::vector<glm::vec3> vertices;
     std::vector<glm::vec3> normals;
+    std::vector<Cube_MinMax> minmax;
+    std::vector<float> distribute;
     float isovalue;
     int length, width, height;
     std::vector<glm::vec3> get_vert_tetr(VertData v0, VertData v1, VertData v2, VertData v3);
@@ -31,7 +37,7 @@ public:
     std::vector<glm::vec3> getVertices();
     std::vector<glm::vec3> getNormals();
     ~Iso_Surface();
-
+    std::vector<float> getDistribute();
 };
 
 
