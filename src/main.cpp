@@ -127,10 +127,10 @@ void init_data(){
     // iso_surface1: isovalue = 128, 紅色
     iso_surface1 = Iso_Surface(data, MODEL_LEN, MODEL_HEI, MODEL_WID);
     iso_surface1.generate_cube(200.f);  // 假設你使用 Marching Cubes (generate_cube)
-    surfaces.push_back({iso_surface1.getVertices(), iso_surface1.getNormals(), glm::vec3(155.f / 255.0f, 89.f / 255.0f, 182.f / 255.0f)});
+    surfaces.push_back({iso_surface1.get_vertices(), iso_surface1.get_normals(), glm::vec3(155.f / 255.0f, 89.f / 255.0f, 182.f / 255.0f)});
     
     iso_surface1.generate_cube(10.f);
-    surfaces.push_back({iso_surface1.getVertices(), iso_surface1.getNormals(), glm::vec3(0.0f, 1.0f, 1.0f)});
+    surfaces.push_back({iso_surface1.get_vertices(), iso_surface1.get_normals(), glm::vec3(0.0f, 1.0f, 1.0f)});
 }
 
 // 建立一個函式，把某個 iso_surface 的頂點/法線存進 GPU (VAO, VBO)
@@ -259,7 +259,7 @@ int main(int argc, char **argv){
             ImGui::SliderFloat("Min Draw Position X", &minDrawPos.x, MODEL_LEN, 0.0f);
             ImGui::SliderFloat("Min Draw Position Y", &minDrawPos.y, 0.0f, MODEL_HEI);
             ImGui::SliderFloat("Min Draw Position Z", &minDrawPos.z, 0.0f, MODEL_WID);
-            std::vector<float> d = iso_surface1.getDistribute();
+            std::vector<float> d = iso_surface1.get_distribute();
             ImVec2 graph_size = ImVec2(0, 80);
             ImGui::PlotHistogram("My Histogram", d.data(), d.size(), 0, nullptr, FLT_MAX, FLT_MAX, graph_size);
                      
@@ -275,11 +275,11 @@ int main(int argc, char **argv){
                         // 注意：在背景線程中僅進行資料運算，不能呼叫 OpenGL API
                         Iso_Surface tmp1(data, 256, 256, 256);
                         tmp1.generate_cube(iso1);  // 假設你使用 Marching Cubes (generate_cube)
-                        Surface newRed = {tmp1.getVertices(), tmp1.getNormals(), glm::vec3(84.f / 255.0f, 153.f / 255.0f, 199.f / 255.0f)};
+                        Surface newRed = {tmp1.get_vertices(), tmp1.get_normals(), glm::vec3(84.f / 255.0f, 153.f / 255.0f, 199.f / 255.0f)};
                         
                         Iso_Surface tmp2(data, 256, 256, 256);
                         tmp2.generate_cube(iso2);
-                        Surface newGreen = {tmp2.getVertices(), tmp2.getNormals(), glm::vec3(0.0f, 1.0f, 1.0f)};
+                        Surface newGreen = {tmp2.get_vertices(), tmp2.get_normals(), glm::vec3(0.0f, 1.0f, 1.0f)};
 
                         return std::make_pair(newRed, newGreen);
                     });

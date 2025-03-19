@@ -405,7 +405,7 @@ void Iso_Surface::generate_tetr(float isovalue){
         }
     }   
     
-    calculateNormals();
+    calculate_normals();
 }
 
 void Iso_Surface::generate_cube(float iso_value){
@@ -435,13 +435,64 @@ void Iso_Surface::generate_cube(float iso_value){
         }
     }
     // */
-    calculateNormals();
+    calculate_gradient();
     std::cout << "generate_cube end" << std::endl;
 }
 
-void Iso_Surface::calculateNormals() {
+float Iso_Surface::sample_value(float x, float y, float z) {
+    int x0 = static_cast<int>(std::floor(x));
+    int y0 = static_cast<int>(std::floor(y));
+    int z0 = static_cast<int>(std::floor(z));
+    int x1 = x0 + 1;
+    int y1 = y0 + 1;
+    int z1 = z0 + 1;
+
+    x0 = std::clamp(x0, 0, length - 1);
+    x1 = std::clamp(x1, 0, length - 1);
+    y0 = std::clamp(y0, 0, width - 1);
+    y1 = std::clamp(y1, 0, width - 1);
+    z0 = std::clamp(z0, 0, height - 1);
+    z1 = std::clamp(z1, 0, height - 1);
+
+    float xd = x - x0;
+    float yd = y - y0;
+    float zd = z - z0;
+
+    float c00 = data[x0][y0][z0] * (1 - xd) + data[x1][y0][z0] * xd;
+    float c01 = data[x0][y0][z1] * (1 - xd) + data[x1][y0][z1] * xd;
+    float c10 = data[x0][y1][z0] * (1 - xd) + data[x1][y1][z0] * xd;
+    float c11 = data[x0][y1][z1] * (1 - xd) + data[x1][y1][z1] * xd;
+    
+    float c0 = c00 * (1 - yd) + c10 * yd;
+    float c1 = c01 * (1 - yd) + c11 * yd;
+    
+    return c0 * (1 - zd) + c1 * zd;
+}
+
+glm::vec3 Iso_Surface::compute_gradient_at(const glm::vec3 &pos) {
+    float delta = 0.5f;
+    float gx = sample_value(pos.x + delta, pos.y, pos.z) - sample_value(pos.x - delta, pos.y, pos.z);
+    float gy = sample_value(pos.x, pos.y + delta, pos.z) - sample_value(pos.x, pos.y - delta, pos.z);
+    float gz = sample_value(pos.x, pos.y, pos.z + delta) - sample_value(pos.x, pos.y, pos.z - delta);
+    
+    glm::vec3 grad(gx, gy, gz);
+    float len = glm::length(grad);
+    if (len == 0.0f)
+        return glm::vec3(0.0f, 0.0f, 0.0f);
+    return grad / len;
+}
+
+void Iso_Surface::calculate_gradient() {
     normals.clear();
-    // 每三個頂點構成一個三角形
+    for (size_t i = 0; i < vertices.size(); ++i) {
+         glm::vec3 pos = vertices[i];
+         glm::vec3 normal = compute_gradient_at(pos);
+         normals.push_back(normal);
+    }
+}
+
+void Iso_Surface::calculate_normals() {
+    normals.clear();
     for (size_t i = 0; i < vertices.size(); i += 3) {
         glm::vec3 p0 = vertices[i];
         glm::vec3 p1 = vertices[i + 1];
@@ -449,7 +500,6 @@ void Iso_Surface::calculateNormals() {
         glm::vec3 edge1 = p1 - p0;
         glm::vec3 edge2 = p2 - p0;
         glm::vec3 normal = glm::normalize(glm::cross(edge1, edge2));
-        // 將該三角形的法線賦值給三個頂點
         normals.push_back(normal);
         normals.push_back(normal);
         normals.push_back(normal);
@@ -463,14 +513,14 @@ Iso_Surface::~Iso_Surface(){
     data.clear();
 }
 
-std::vector<glm::vec3> Iso_Surface::getVertices(){
+std::vector<glm::vec3> Iso_Surface::get_vertices(){
     return vertices;
 }
 
-std::vector<glm::vec3> Iso_Surface::getNormals(){
+std::vector<glm::vec3> Iso_Surface::get_normals(){
     return normals;
 }
 
-std::vector<float> Iso_Surface::getDistribute(){
+std::vector<float> Iso_Surface::get_distribute(){
     return distribute;
 }

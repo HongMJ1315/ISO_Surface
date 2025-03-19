@@ -28,16 +28,19 @@ struct Cube_MinMax{
     std::vector<glm::vec3> get_vert_tetr(VertData v0, VertData v1, VertData v2, VertData v3);
     std::vector<glm::vec3> get_vert_cube(VertData v0, VertData v1, VertData v2, VertData v3,
                                          VertData v4, VertData v5, VertData v6, VertData v7);
-    void calculateNormals();
+    void calculate_normals();
+    void calculate_gradient();
 public:
     Iso_Surface();
     Iso_Surface(std::vector<unsigned char> data, int length, int width, int height);
     void generate_tetr(float isovalue);
     void generate_cube(float isovalue);
-    std::vector<glm::vec3> getVertices();
-    std::vector<glm::vec3> getNormals();
+    std::vector<glm::vec3> get_vertices();
+    glm::vec3 compute_gradient_at(const glm::vec3 &pos);
+    float sample_value(float x, float y, float z);
+    std::vector<glm::vec3> get_normals();
     ~Iso_Surface();
-    std::vector<float> getDistribute();
+    std::vector<float> get_distribute();
 };
 
 
