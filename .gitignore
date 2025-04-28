@@ -3,3 +3,12 @@ build/
 Scalar/
 imgui.ini
 *.zip
+*.gz
+document.aux
+document.fls
+document.log
+document.out
+document.pdf
+document.toc
+texput.fls
+texput.log
